@@ -1,0 +1,5 @@
+# Install dewa-observability first, from the sibling repo:
+#   pip install -e ../dewa-observability
+pyflakes>=3.0
+pytest>=7.0
+openai>=1.0
