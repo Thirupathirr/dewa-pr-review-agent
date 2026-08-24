@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>DEWA PR Review Agent — Live Run</title>
+<style>
+  body{margin:0;background:#0F1420;font-family:'Segoe UI',Calibri,Arial,sans-serif;color:#EAEEFC;}
+  .wrap{display:flex;height:100vh;}
+  .left{width:60%;padding:30px;display:flex;flex-direction:column;}
+  .right{width:40%;background:#151B2C;padding:30px;overflow-y:auto;border-left:1px solid #262E45;}
+
+  h1{font-family:Cambria,Georgia,serif;font-size:20px;margin:0 0 4px;color:#fff;}
+  .sub{font-size:12px;color:#8A93A8;margin-bottom:28px;}
+
+  .graph{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;}
+  .node-row{display:flex;align-items:center;gap:10px;}
+  .node{flex:1;background:#1B2338;border:2px solid #2E3A54;border-radius:10px;padding:16px 18px;
+    transition:all 0.35s ease;position:relative;}
+  .node .name{font-size:14px;font-weight:700;color:#C7CEE0;}
+  .node .detail{font-size:11px;color:#6B7690;margin-top:4px;min-height:14px;}
+  .node.active{border-color:#D9A441;background:#2A2410;box-shadow:0 0 18px rgba(217,164,65,0.35);}
+  .node.active .name{color:#F1C866;}
+  .node.passed{border-color:#0F8A5F;background:#0F1F18;}
+  .node.passed .name{color:#3FD98A;}
+  .node.blocked{border-color:#C0392B;background:#2A1212;}
+  .node.blocked .name{color:#F27E70;}
+  .node.escalated{border-color:#C9973A;background:#2A2110;}
+  .node.escalated .name{color:#F1C866;}
+  .arrow-down{text-align:center;color:#3A4560;font-size:16px;margin:-6px 0;}
+
+  .badge{font-size:9px;letter-spacing:1px;text-transform:uppercase;font-weight:700;
+    padding:2px 8px;border-radius:10px;position:absolute;top:12px;right:14px;}
+  .badge.active{background:#D9A441;color:#1a1a1a;}
+  .badge.passed{background:#0F8A5F;color:#fff;}
+  .badge.blocked{background:#C0392B;color:#fff;}
+  .badge.escalated{background:#C9973A;color:#1a1a1a;}
+
+  .log-title{font-size:13px;font-weight:700;color:#8A93A8;letter-spacing:1px;
+    text-transform:uppercase;margin-bottom:16px;}
+  .log-entry{border-left:2px solid #2E3A54;padding:8px 0 8px 14px;margin-bottom:2px;font-size:12px;}
+  .log-entry .ts{color:#565F78;font-family:Consolas,monospace;font-size:10px;}
+  .log-entry .node-name{color:#8FB3FF;font-weight:700;margin:0 6px;}
+  .log-entry .status-passed{color:#3FD98A;}
+  .log-entry .status-active{color:#F1C866;}
+  .log-entry .status-blocked{color:#F27E70;}
+  .log-entry .status-escalated{color:#F1C866;}
+  .log-entry .detail{color:#6B7690;margin-top:2px;font-size:11px;word-break:break-word;}
+
+  .empty{color:#565F78;font-size:12px;font-style:italic;}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="left">
+    <h1>PR Review Agent — Live Run</h1>
+    <div class="sub">Polling dashboard/run_log.json every second</div>
+    <div class="graph" id="graph">
+      <div class="node-row"><div class="node" data-node="plan"><span class="name">PLAN — check tool access</span><div class="detail"></div></div></div>
+      <div class="arrow-down">&#8595;</div>
+      <div class="node-row"><div class="node" data-node="run_lint"><span class="name">ACT — real lint (pyflakes)</span><div class="detail"></div></div></div>
+      <div class="arrow-down">&#8595;</div>
+      <div class="node-row"><div class="node" data-node="run_tests"><span class="name">ACT — real tests (pytest)</span><div class="detail"></div></div></div>
+      <div class="arrow-down">&#8595;</div>
+      <div class="node-row"><div class="node" data-node="reflect"><span class="name">REFLECT — model confidence</span><div class="detail"></div></div></div>
+      <div class="arrow-down">&#8595;</div>
+      <div class="node-row"><div class="node" data-node="decide"><span class="name">DECIDE — harness has final say</span><div class="detail"></div></div></div>
+    </div>
+  </div>
+  <div class="right">
+    <div class="log-title">Live Event Log</div>
+    <div id="log"><div class="empty">Waiting for a run — execute examples/run_pr_review_agent.py</div></div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  var nodeEls = {};
+  (function collectNodes() {
+    var all = document.querySelectorAll('.node');
+    for (var i = 0; i < all.length; i++) {
+      nodeEls[all[i].getAttribute('data-node')] = all[i];
+    }
+  })();
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function render(entries) {
+    var i, key;
+    for (key in nodeEls) {
+      if (!nodeEls.hasOwnProperty(key)) continue;
+      var n = nodeEls[key];
+      n.className = 'node';
+      var d = n.querySelector('.detail');
+      if (d) d.textContent = '';
+      var b = n.querySelector('.badge');
+      if (b) b.parentNode.removeChild(b);
+    }
+
+    if (!entries || entries.length === 0) return;
+
+    var logDiv = document.getElementById('log');
+    logDiv.innerHTML = '';
+    for (i = entries.length - 1; i >= 0; i--) {
+      var e = entries[i];
+      var div = document.createElement('div');
+      div.className = 'log-entry';
+      var html = '<span class="ts">' + escapeHtml(e.timestamp) + '</span>' +
+        '<span class="node-name">' + escapeHtml(e.node) + '</span>' +
+        '<span class="status-' + escapeHtml(e.status) + '">' + escapeHtml(e.status) + '</span>';
+      if (e.detail) {
+        html += '<div class="detail">' + escapeHtml(e.detail) + '</div>';
+      }
+      div.innerHTML = html;
+      logDiv.appendChild(div);
+    }
+
+    var latestByNode = {};
+    for (i = 0; i < entries.length; i++) {
+      latestByNode[entries[i].node] = entries[i];
+    }
+    for (key in latestByNode) {
+      if (!latestByNode.hasOwnProperty(key)) continue;
+      var el = nodeEls[key];
+      if (!el) continue;
+      var entry = latestByNode[key];
+      el.className = 'node ' + entry.status;
+      var detailEl = el.querySelector('.detail');
+      if (detailEl) detailEl.textContent = entry.detail || '';
+      var badge = document.createElement('div');
+      badge.className = 'badge ' + entry.status;
+      badge.textContent = entry.status;
+      el.appendChild(badge);
+    }
+  }
+
+  function fetchJson(url, onSuccess, onError) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          try {
+            onSuccess(JSON.parse(xhr.responseText));
+          } catch (e) {
+            if (onError) onError(e);
+          }
+        } else if (onError) {
+          onError(new Error('status ' + xhr.status));
+        }
+      }
+    };
+    xhr.send();
+  }
+
+  function poll() {
+    fetchJson('run_log.json?_=' + new Date().getTime(), render, function() {});
+    setTimeout(poll, 1000);
+  }
+
+  poll();
+</script>
+</body></html>

@@ -22,6 +22,14 @@ from tools.linter import run_lint, auto_fix_unused_imports
 from tools.test_runner import run_tests
 from tools.model_confidence import get_model_confidence
 
+import json
+import time
+from pathlib import Path
+
+RUN_LOG_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "run_log.json"
+
+NODE_SEQUENCE = ["plan", "read_repo", "run_lint", "run_tests", "reflect", "decide"]
+
 
 @dataclass
 class AgentState:
@@ -55,6 +63,28 @@ class PRReviewAgent:
     def _log(self, msg: str):
         print(f"  {msg}")
 
+    def _write_status(self, node: str, status: str, detail: str = ""):
+        """Appends one step to the dashboard's run log. Plain JSON file —
+        the dashboard polls this, no server or database needed."""
+        RUN_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        entries = []
+        if RUN_LOG_PATH.exists():
+            try:
+                entries = json.loads(RUN_LOG_PATH.read_text())
+            except (json.JSONDecodeError, FileNotFoundError):
+                entries = []
+        entries.append({
+            "timestamp": time.strftime("%H:%M:%S"),
+            "node": node,
+            "status": status,   # "active" | "passed" | "failed" | "blocked" | "escalated"
+            "detail": detail,
+        })
+        RUN_LOG_PATH.write_text(json.dumps(entries, indent=2))
+
+    def _reset_run_log(self):
+        RUN_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        RUN_LOG_PATH.write_text("[]")
+
     def _trace_back(self, **overrides) -> dict:
         base = {
             "user_id": self.requesting_user_id,
@@ -73,6 +103,7 @@ class PRReviewAgent:
     # ================= PLAN =================
     def plan(self) -> list[str]:
         self._log("── PLAN ──")
+        self._write_status("plan", "active", "checking tool access")
         needed_tools = ["read_repo", "run_lint", "run_tests"]
         approved = []
         for tool in needed_tools:
@@ -81,8 +112,11 @@ class PRReviewAgent:
                 self.guard.check_tool_access(tb, tool_name=tool)
                 self._log(f"tool '{tool}': harness approved")
                 approved.append(tool)
+                self._write_status(tool, "passed", "tool access approved")
             except PolicyViolation as e:
                 self._log(f"tool '{tool}': harness BLOCKED — {e}")
+                self._write_status(tool, "blocked", str(e))
+        self._write_status("plan", "passed", f"{len(approved)}/{len(needed_tools)} tools approved")
         return approved
 
     # ================= ACT: real lint, real fix, real retry =================
@@ -97,7 +131,11 @@ class PRReviewAgent:
 
             if passed:
                 self.state.lint_passed = True
+                self._write_status("run_lint", "passed", output)
                 break
+
+            self._write_status("run_lint", "active",
+                              f"attempt {self.state.retry_attempts} failed: {output}")
 
             tb = self._trace_back()
             try:
@@ -105,6 +143,7 @@ class PRReviewAgent:
                                         retry_reason=f"lint_failed: {output}")
             except PolicyViolation as e:
                 self._log(f"harness BLOCKED further retries — {e}")
+                self._write_status("run_lint", "blocked", str(e))
                 self.state.decision = "blocked"
                 return False
 
@@ -113,6 +152,7 @@ class PRReviewAgent:
                 self._log("applied real auto-fix (removed unused import) to the real file")
             else:
                 self._log("no automated fix available for this issue")
+                self._write_status("run_lint", "blocked", "no automated fix available")
                 self.state.decision = "blocked"
                 return False
         return True
@@ -141,13 +181,16 @@ class PRReviewAgent:
 
         if not all_passed:
             self._log("real test failures — stopping, not escalating a broken PR")
+            self._write_status("run_tests", "blocked", f"{failed_count} test(s) failed")
             self.state.decision = "blocked"
             return False
+        self._write_status("run_tests", "passed", f"{passed_count} passed, {failed_count} failed")
         return True
 
     # ================= REFLECT: the one real/offline model spot =================
     def reflect(self):
         self._log("── REFLECT ──")
+        self._write_status("reflect", "active", "getting model confidence")
         confidence, mode = get_model_confidence(self.state.lint_output, self.state.test_output)
         self.state.confidence = confidence
         self.state.confidence_mode = mode
@@ -158,19 +201,24 @@ class PRReviewAgent:
         }
         label = labels.get(mode, mode)
         self._log(f"confidence: {confidence}  [{label}]")
+        self._write_status("reflect", "passed", f"confidence={confidence} [{mode}]")
 
     # ================= DECIDE =================
     def decide(self):
         self._log("── DECIDE ──")
         self._log(f"agent WANTS to: auto-approve (confidence={self.state.confidence})")
+        self._write_status("decide", "active",
+                          f"agent wants: auto-approve (confidence={self.state.confidence})")
         tb = self._trace_back()
         try:
             self.guard.check_confidence(tb, confidence=self.state.confidence)
             self._log("harness agrees — confidence clears threshold")
             self.state.decision = "approved"
+            self._write_status("decide", "passed", "harness agrees — approved")
         except PolicyViolation as e:
             self._log(f"harness OVERRULES the agent — {e}")
             self.state.decision = "escalated"
+            self._write_status("decide", "escalated", str(e))
 
     def _emit_final_telemetry(self):
         tb = self._trace_back()
@@ -194,6 +242,7 @@ class PRReviewAgent:
         )
 
     def run(self) -> AgentState:
+        self._reset_run_log()
         self._log(f"Agent {self.agent_id} starting on "
                   f"{self.work_item['work_item_id']} — real repo: {self.repo_path}")
 
