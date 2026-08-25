@@ -11,9 +11,10 @@ A real agentic system that touches a real repo — depends on
   edits the file on disk, then genuinely re-runs lint and passes.
 - `tools/test_runner.py` — genuinely runs `pytest` against `target_repo/`.
 - `tools/model_confidence.py` — the ONE place a model is used. Calls real
-  Azure OpenAI if `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` are
-  set; otherwise falls back to an honestly-labeled offline value so the
-  demo still runs without credentials.
+  Claude if `ANTHROPIC_API_KEY` is set; otherwise falls back to an
+  honestly-labeled offline value so the demo still runs without
+  credentials. (Azure OpenAI is also supported as a fallback path if you
+  ever need it — see below — but Claude is what this repo is built for.)
 
 ## Setup
 
@@ -21,12 +22,13 @@ A real agentic system that touches a real repo — depends on
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ../dewa-observability
-pip install pyflakes pytest openai
+pip install -r requirements.txt
 ```
 
 ## Run it
 
 ```
+export ANTHROPIC_API_KEY="your-key"
 python examples/run_pr_review_agent.py
 ```
 
@@ -37,13 +39,23 @@ tests → confidence check → harness decides approve or escalate.
 it. Reset it before re-running if you want to see the failure→fix cycle
 again — re-add `import os` as the first import line.
 
-## To use a real Azure OpenAI model instead of the offline fallback
+## To run without an API key (offline demo mode)
+
+Just skip the `export` line above. `tools/model_confidence.py`
+automatically falls back to a labeled offline value — the run summary
+will say `[offline]` instead of `[claude]`, so it's never mistaken for a
+real judgment.
+
+## To use Azure OpenAI instead of Claude
+
+Only relevant if you're not using an Anthropic key:
 
 ```
+pip install openai
 export AZURE_OPENAI_API_KEY="your-key"
 export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com"
 ```
 
-Then run the same command — `tools/model_confidence.py` automatically
-switches to the real call, and the run summary will say `[real]` instead
-of `[offline]`.
+`tools/model_confidence.py` checks for `ANTHROPIC_API_KEY` first — Azure
+is only used if that's unset. Not in `requirements.txt` by default,
+since Claude is the primary path.

@@ -2,4 +2,4 @@
 #   pip install -e ../dewa-observability
 pyflakes>=3.0
 pytest>=7.0
-openai>=1.0
+anthropic>=0.25
