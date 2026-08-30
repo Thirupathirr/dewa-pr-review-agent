@@ -1,0 +1,104 @@
+[
+  {
+    "timestamp": "19:51:08",
+    "node": "orchestrator:plan",
+    "status": "passed",
+    "detail": "routed to: ['code_agent', 'security_agent', 'unit_test_agent']"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "code-agent:read_repo",
+    "status": "passed",
+    "detail": "tool access approved"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "code-agent:run_lint",
+    "status": "passed",
+    "detail": "tool access approved"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "code-agent:run_lint",
+    "status": "passed",
+    "detail": "(no issues)"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "code-agent:reflect",
+    "status": "passed",
+    "detail": "confidence=0.86 [offline] loops=0"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "code-agent:decide",
+    "status": "passed",
+    "detail": "harness agrees \u2014 approved"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "unit-test-agent:read_repo",
+    "status": "passed",
+    "detail": "tool access approved"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "unit-test-agent:run_tests",
+    "status": "passed",
+    "detail": "tool access approved"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "unit-test-agent:run_tests",
+    "status": "passed",
+    "detail": "3 passed, 0 failed"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "unit-test-agent:reflect",
+    "status": "passed",
+    "detail": "confidence=0.94 [offline] loops=1"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "unit-test-agent:decide",
+    "status": "passed",
+    "detail": "harness agrees \u2014 approved"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "security-agent:read_repo",
+    "status": "passed",
+    "detail": "tool access approved"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "security-agent:run_security_scan",
+    "status": "passed",
+    "detail": "tool access approved"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "security-agent:run_security_scan",
+    "status": "passed",
+    "detail": "(no known-risky patterns found)"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "security-agent:reflect",
+    "status": "passed",
+    "detail": "confidence=0.93 [offline] loops=0"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "security-agent:decide",
+    "status": "passed",
+    "detail": "harness agrees \u2014 approved"
+  },
+  {
+    "timestamp": "19:51:08",
+    "node": "orchestrator:squad_final",
+    "status": "approved",
+    "detail": "{'code_agent': 'approved', 'unit_test_agent': 'approved', 'security_agent': 'approved'}"
+  }
+]
