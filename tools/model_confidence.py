@@ -12,15 +12,21 @@ import os
 import random
 
 
-def get_model_confidence(lint_output: str, test_output: str) -> tuple[float, str]:
-    """Returns (confidence, mode) where mode is 'claude', 'azure', or 'offline'."""
+def get_model_confidence(lint_output: str, test_output: str) -> tuple[float, str, int]:
+    """Returns (confidence, mode, tokens_used).
+    tokens_used is the REAL input+output token count from the API response
+    for 'claude'/'azure' modes, or 0 for 'offline' — there is no real call
+    to measure in offline mode, so reporting anything else would be another
+    invented number."""
     if os.environ.get("ANTHROPIC_API_KEY"):
-        return _claude_call(lint_output, test_output), "claude"
+        confidence, tokens = _claude_call(lint_output, test_output)
+        return confidence, "claude", tokens
 
     if os.environ.get("AZURE_OPENAI_API_KEY") and os.environ.get("AZURE_OPENAI_ENDPOINT"):
-        return _azure_call(lint_output, test_output), "azure"
+        confidence, tokens = _azure_call(lint_output, test_output)
+        return confidence, "azure", tokens
 
-    return _offline_fallback(), "offline"
+    return _offline_fallback(), "offline", 0
 
 
 def _prompt(lint_output: str, test_output: str) -> str:
@@ -32,7 +38,7 @@ def _prompt(lint_output: str, test_output: str) -> str:
     )
 
 
-def _claude_call(lint_output: str, test_output: str) -> float:
+def _claude_call(lint_output: str, test_output: str) -> tuple[float, int]:
     from anthropic import Anthropic
 
     client = Anthropic()  # reads ANTHROPIC_API_KEY from environment
@@ -42,10 +48,13 @@ def _claude_call(lint_output: str, test_output: str) -> float:
         messages=[{"role": "user", "content": _prompt(lint_output, test_output)}],
     )
     raw = response.content[0].text.strip()
-    return _parse_confidence(raw)
+    # response.usage is REAL data from Anthropic's own API — this was being
+    # discarded before; input + output is the true token cost of this call.
+    real_tokens = response.usage.input_tokens + response.usage.output_tokens
+    return _parse_confidence(raw), real_tokens
 
 
-def _azure_call(lint_output: str, test_output: str) -> float:
+def _azure_call(lint_output: str, test_output: str) -> tuple[float, int]:
     from openai import AzureOpenAI
 
     client = AzureOpenAI(
@@ -59,7 +68,8 @@ def _azure_call(lint_output: str, test_output: str) -> float:
         max_tokens=10,
     )
     raw = response.choices[0].message.content.strip()
-    return _parse_confidence(raw)
+    real_tokens = response.usage.total_tokens if response.usage else 0
+    return _parse_confidence(raw), real_tokens
 
 
 def _parse_confidence(raw: str) -> float:

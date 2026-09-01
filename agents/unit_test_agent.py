@@ -26,7 +26,9 @@ class UnitTestAgent(SpecialistAgent):
         all_passed, output, passed_count, failed_count = run_tests(self.repo_path)
         self._log(f"pytest result: {passed_count} passed, {failed_count} failed")
 
-        self.state.tokens_used += 700
+        # tokens_used is tracked for real inside reflect_with_possible_loop().
+        # cost_incurred below is still a placeholder — see code_agent.py's
+        # comment for why it's deliberately not computed here yet.
         self.state.cost_incurred += Decimal("0.12")
 
         if not all_passed:

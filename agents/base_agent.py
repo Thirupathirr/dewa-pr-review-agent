@@ -107,10 +107,17 @@ class SpecialistAgent:
         REAL second call, not a retry of a tool: exactly the distinction
         check_reasoning_loop() exists to police, separate from
         check_retry() which caps tool retries.
+
+        tokens_used accumulates the REAL token count returned by the API
+        for each call made — 0 in offline mode, since there's no real call
+        to measure. This is the only place tokens_used is ever set; lint,
+        tests, and the security scan are not model calls and have no real
+        token cost, so they no longer add a fake one.
         """
-        confidence, mode = get_model_confidence(evidence_a, evidence_b)
+        confidence, mode, tokens = get_model_confidence(evidence_a, evidence_b)
         self.state.confidence = confidence
         self.state.confidence_mode = mode
+        self.state.tokens_used += tokens
 
         if confidence < 0.85:
             tb = self._trace_back()
@@ -122,17 +129,20 @@ class SpecialistAgent:
                 self.state.reasoning_loops_used += 1
                 self._log(f"confidence {confidence} uncertain — reasoning loop "
                           f"#{self.state.reasoning_loops_used}, asking again")
-                confidence, mode = get_model_confidence(evidence_a, evidence_b)
+                confidence, mode, tokens = get_model_confidence(evidence_a, evidence_b)
                 self.state.confidence = confidence
                 self.state.confidence_mode = mode
+                self.state.tokens_used += tokens
             except PolicyViolation as e:
                 self._log(f"reasoning-loop cap hit — proceeding with first answer: {e}")
 
         labels = {"claude": "REAL Claude API call", "azure": "REAL Azure OpenAI call",
                   "offline": "OFFLINE fallback (no API key set)"}
-        self._log(f"confidence: {confidence}  [{labels.get(mode, mode)}]")
+        self._log(f"confidence: {confidence}  [{labels.get(mode, mode)}]  "
+                  f"tokens so far: {self.state.tokens_used}")
         self._write_status("reflect", "passed",
-                          f"confidence={confidence} [{mode}] loops={self.state.reasoning_loops_used}")
+                          f"confidence={confidence} [{mode}] loops={self.state.reasoning_loops_used} "
+                          f"tokens={self.state.tokens_used}")
 
     def decide(self) -> None:
         """Shared DECIDE step — same shape as the original single-agent build."""

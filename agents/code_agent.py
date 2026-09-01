@@ -57,7 +57,12 @@ class CodeAgent(SpecialistAgent):
                 self.state.decision = "blocked"
                 return self.state
 
-        self.state.tokens_used += 900
+        # tokens_used is now tracked for real, inside reflect_with_possible_loop()
+        # — it reads the actual token count back from the Claude API response.
+        # No baseline added here: lint is not a model call, has no token cost.
+        # cost_incurred below is STILL a placeholder (0.16 AED) — real cost
+        # needs Anthropic's actual per-token price + a USD→AED rate, neither
+        # wired up yet. Flagged here rather than silently left unexplained.
         self.state.cost_incurred += Decimal("0.16")
 
         self.reflect_with_possible_loop(

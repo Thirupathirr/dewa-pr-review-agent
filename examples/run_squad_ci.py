@@ -33,13 +33,13 @@ def build_markdown_summary(result: dict, obs: ObservabilityClient,
     lines = [
         f"## {emoji} DEWA Agentic Squad — {decision.upper()}",
         "",
-        "| Agent | Decision | Confidence | Loops | Cost |",
-        "|---|---|---|---|---|",
+        "| Agent | Decision | Confidence | Loops | Tokens | Cost |",
+        "|---|---|---|---|---|---|",
     ]
     for name, state in result["results"].items():
         lines.append(
             f"| {name} | {state.decision} | {state.confidence} | "
-            f"{state.reasoning_loops_used} | {state.cost_incurred} AED |"
+            f"{state.reasoning_loops_used} | {state.tokens_used} | {state.cost_incurred} AED |"
         )
     lines += [
         "",
@@ -52,7 +52,9 @@ def build_markdown_summary(result: dict, obs: ObservabilityClient,
         f"Fast path events: {len(obs.fast_path.events)} · "
         f"Durable path events: {len(obs.durable_path.events)}",
         "",
-        "*v1 — reviews the whole file, not yet the PR diff.*",
+        "*v1 — reviews the whole file, not yet the PR diff. "
+        "Tokens above are real (from the API response); cost (AED) is still "
+        "a placeholder — not yet computed from real per-token pricing.*",
     ]
     return "\n".join(lines)
 
@@ -137,7 +139,7 @@ def main():
     for name, state in result["results"].items():
         print(f"  {name:16s} decision={str(state.decision):10s} "
               f"confidence={state.confidence} loops={state.reasoning_loops_used} "
-              f"cost={state.cost_incurred} AED")
+              f"tokens={state.tokens_used} cost={state.cost_incurred} AED")
     print(f"  Fast path events:    {len(obs.fast_path.events)}")
     print(f"  Durable path events: {len(obs.durable_path.events)}")
 

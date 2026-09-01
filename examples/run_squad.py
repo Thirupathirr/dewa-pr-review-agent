@@ -63,7 +63,7 @@ def main():
     for name, state in result["results"].items():
         print(f"  {name:16s} decision={str(state.decision):10s} "
               f"confidence={state.confidence} loops={state.reasoning_loops_used} "
-              f"cost={state.cost_incurred} AED")
+              f"tokens={state.tokens_used} cost={state.cost_incurred} AED")
     print(f"  Fast path events:    {len(obs.fast_path.events)}")
     print(f"  Durable path events: {len(obs.durable_path.events)}")
 
