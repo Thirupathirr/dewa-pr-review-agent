@@ -46,3 +46,22 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
         run: python examples/run_squad_ci.py
+
+      # Uploads the dashboard exactly as this run left it — index.html
+      # (unchanged) + this run's real run_log.json. Download it from the
+      # Actions run summary page, unzip, then `python3 -m http.server`
+      # inside the unzipped folder and open localhost to view it.
+      #
+      # if: always() is essential here — the previous step exits 1 on
+      # escalation/blocked (the common, interesting case), and without
+      # this the artifact would only ever upload on the boring "everyone
+      # approved" runs.
+      - name: Upload dashboard snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-snapshot-${{ github.run_id }}
+          path: |
+            dashboard/index.html
+            dashboard/run_log.json
+          retention-days: 14
