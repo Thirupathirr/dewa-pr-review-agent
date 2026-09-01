@@ -55,8 +55,16 @@ class Orchestrator:
                 entries = json.loads(RUN_LOG_PATH.read_text())
             except (json.JSONDecodeError, FileNotFoundError):
                 entries = []
-        entries.append({"timestamp": time.strftime("%H:%M:%S"),
-                        "node": f"{self.agent_id}:{node}", "status": status, "detail": detail})
+        entries.append({
+            "timestamp": time.strftime("%H:%M:%S"),
+            "agent_id": self.agent_id,
+            "agent_version": self.agent_version,
+            "skill_id": self.skill_id,
+            "node": f"{self.agent_id}:{node}",
+            "step": node,
+            "status": status,
+            "detail": detail,
+        })
         RUN_LOG_PATH.write_text(json.dumps(entries, indent=2))
 
     def _trace_back(self, **overrides) -> dict:

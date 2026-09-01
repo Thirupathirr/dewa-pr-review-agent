@@ -62,7 +62,11 @@ class SpecialistAgent:
                 entries = []
         entries.append({
             "timestamp": time.strftime("%H:%M:%S"),
+            "agent_id": self.agent_id,
+            "agent_version": self.agent_version,
+            "skill_id": self.skill_id,
             "node": f"{self.agent_id}:{node}",
+            "step": node,
             "status": status,
             "detail": detail,
         })

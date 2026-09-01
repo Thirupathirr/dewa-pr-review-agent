@@ -79,6 +79,19 @@ class CodeAgent(SpecialistAgent):
                 self.state.decision = "blocked"
                 return self.state
 
+        # New dashboard step — shows on the dashboard what the terminal
+        # log always showed but the dashboard never did: whether a real
+        # fix was applied, and which one. Distinct "fixed" status (blue)
+        # so it's not confused with a plain "passed" (green) — a
+        # corrective action is a different thing to communicate than a
+        # clean first-try pass.
+        if self.fixes_applied:
+            fixes_summary = ", ".join(self.fixes_applied)
+            self._write_status("fix_applied", "fixed",
+                                f"{fixes_summary} — original issue: {self.initial_failure}")
+        else:
+            self._write_status("fix_applied", "passed", "not needed — lint clean on first attempt")
+
         # tokens_used is now tracked for real, inside reflect_with_possible_loop()
         # — it reads the actual token count back from the Claude API response.
         # No baseline added here: lint is not a model call, has no token cost.
