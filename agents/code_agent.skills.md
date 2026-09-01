@@ -2,8 +2,9 @@
 
 ## Does
 - Reviews the implementation of a code change using real pyflakes lint output
-- Applies ONE narrow, safe auto-fix: removing an unused import pyflakes
-  explicitly flagged — nothing else
+- Applies TWO narrow, safe auto-fixes: removing an unused import, or
+  removing a duplicate import — both explicitly flagged by real
+  pyflakes output, nothing else
 - Forms a confidence judgment based on lint evidence only
 
 ## Does not

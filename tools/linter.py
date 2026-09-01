@@ -52,3 +52,38 @@ def auto_fix_unused_imports(repo_path: str, filename: str, lint_output: str) -> 
 
     target.write_text("".join(new_lines))
     return True
+
+
+def auto_fix_duplicate_imports(repo_path: str, filename: str, lint_output: str) -> bool:
+    """
+    Parses real pyflakes output for 'redefinition of unused X from line N'
+    — e.g. the same module imported twice — and removes ONLY the
+    duplicate line, using the exact line number pyflakes itself reported.
+    The original (first) import is kept untouched.
+
+    Same philosophy as auto_fix_unused_imports(): narrow, safe,
+    deterministic. Removes the line by its reported number, not by
+    pattern-guessing which occurrence is the duplicate — precise even
+    if the same module were imported 3+ times.
+    """
+    match = re.search(
+        r"^.+?:(\d+):\d+: redefinition of unused '(\w+)' from line \d+",
+        lint_output, re.MULTILINE,
+    )
+    if not match:
+        return False
+
+    duplicate_line_num = int(match.group(1))
+    target = Path(repo_path) / filename
+    lines = target.read_text().splitlines(keepends=True)
+
+    if not (1 <= duplicate_line_num <= len(lines)):
+        return False  # line number out of range — don't guess, don't crash
+
+    flagged_line = lines[duplicate_line_num - 1]
+    if not re.match(r"^\s*import \w+\s*(#.*)?$", flagged_line):
+        return False  # safety check: only remove a genuine plain import line
+
+    del lines[duplicate_line_num - 1]
+    target.write_text("".join(lines))
+    return True
