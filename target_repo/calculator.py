@@ -3,6 +3,7 @@
 Has a genuine lint issue: an unused import. Real pyflakes will flag this,
 not a scripted pass/fail.
 """
+import os
 import math
 
 
