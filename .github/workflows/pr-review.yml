@@ -26,6 +26,7 @@ jobs:
         with:
           repository: Thirupathirr/dewa-observability-harness_control
           path: dewa-observability-harness_control
+          token: ${{ secrets.CROSS_REPO_TOKEN }}   # private repo — default token can't cross repos
 
       - name: Set up Python
         uses: actions/setup-python@v5
