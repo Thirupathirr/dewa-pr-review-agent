@@ -1,8 +1,5 @@
 name: PR Review Agent
 
-# v1 scope: reviews the whole file(s) in target_repo/, same as running
-# examples/run_squad.py locally. Does NOT yet parse the PR diff to review
-# only changed lines — that's a separate, larger piece, not built here.
 on:
   pull_request:
     paths:
@@ -12,20 +9,18 @@ jobs:
   review:
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write   # required to post the PR comment
+      pull-requests: write
 
     steps:
       - name: Checkout dewa-pr-review-agent
         uses: actions/checkout@v4
 
-      # The harness lives in a SEPARATE repo. requirements.txt already
-      # says "pip install dewa-observability from the sibling repo" —
-      # in CI there is no sibling folder unless we check it out too.
       - name: Checkout dewa-observability (sibling repo)
         uses: actions/checkout@v4
         with:
           repository: Thirupathirr/dewa-observability-harness_control
           path: dewa-observability-harness_control
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
