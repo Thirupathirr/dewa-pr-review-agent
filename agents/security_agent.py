@@ -32,7 +32,9 @@ class SecurityAgent(SpecialistAgent):
         passed, output = run_security_scan(self.repo_path, self.target_file)
         self._log(f"security scan: {'CLEAN' if passed else 'FLAGGED'} — {output}")
 
-        self.state.tokens_used += 500
+        # tokens_used is tracked for real inside reflect_with_possible_loop().
+        # cost_incurred below is still a placeholder — see code_agent.py's
+        # comment for why it's deliberately not computed here yet.
         self.state.cost_incurred += Decimal("0.09")
 
         if not passed:
