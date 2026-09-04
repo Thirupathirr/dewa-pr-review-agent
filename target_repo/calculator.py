@@ -5,6 +5,7 @@ not a scripted pass/fail.
 """
 import os
 import math
+import math
 
 
 def add(a: float, b: float) -> float:
@@ -17,4 +18,3 @@ def subtract(a: float, b: float) -> float:
 
 def sqrt(x: float) -> float:
     return math.sqrt(x)
-
